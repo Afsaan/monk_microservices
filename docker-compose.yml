@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  blog_api:
+    build:
+      context: ./blog_api/.
+    ports:
+      - "8001:8001"
+
+  edmonk_api:
+    build:
+      context: ./edmonk_api/.
+    ports:
+      - "8002:8002"
