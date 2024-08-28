@@ -3,3 +3,4 @@ azure-cosmos==4.7.0
 logtail-python==0.3.0
 python-dotenv==1.0.1
 uvicorn==0.22.0
+aiohttp==3.9.5
