@@ -8,5 +8,5 @@ class WebinarSchema(BaseModel):
     date: date
     start_time: str
     end_time: str
-    tag: str
+    Tag: str
     active: bool
