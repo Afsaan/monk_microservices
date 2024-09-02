@@ -24,16 +24,16 @@
 
 ### blog_api
 
-- `/blog/get_all_blogs/`: Endpoint for getting all the blogs from the database.
-- `/blog/get_blog/{title}/`: Endpoint for getting title specific blog.
-- `/blog/create_blog/`: Endpoint for writing blog.
-- `/blog/update_blog/`: Endpoint for modifying an existing blog.
-- `/blog/delete_blog/`: Endpoint for deleting an existing blog.
+- `/blog/get-all-blogs/`: Endpoint for getting all the blogs from the database.
+- `/blog/get-blog/{title}/`: Endpoint for getting title specific blog.
+- `/blog/create-blog/`: Endpoint for writing blog.
+- `/blog/update-blog/`: Endpoint for modifying an existing blog.
+- `/blog/delete-blog/`: Endpoint for deleting an existing blog.
 
 
 ### edmonk_api
 
-- `/webinar/get_all_webinars/`: Endpoint for getting all the webinars from the database.
-- `/webinar/create_webinar/`: Endpoint for writing webinar.
-- `/webinar/update_webinar/{webinar_title}`: Endpoint for modifying an existing webinar.
-- `/webinar/delete_webinar/{webinar_title}`: Endpoint for deleting an existing webinar.
+- `/webinar/get-all-webinars/`: Endpoint for getting all the webinars from the database.
+- `/webinar/create-webinar/`: Endpoint for writing webinar.
+- `/webinar/update-webinar/{webinarTitle}`: Endpoint for modifying an existing webinar.
+- `/webinar/delete-webinar/{webinarTitle}`: Endpoint for deleting an existing webinar.
