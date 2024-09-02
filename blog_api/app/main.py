@@ -26,7 +26,7 @@ app=FastAPI(debug=True,
 logger.info("App started")
 
 
-@app.get("/blog/get_all_blogs/")
+@app.get("/blog/get-all-blogs/")
 async def get_all_blogs():
     logger.info("get_all_blogs api called")
     try:
@@ -45,7 +45,7 @@ async def get_all_blogs():
         return handle_exception(e)
 
 
-@app.get("/blog/get_blog/{title}")
+@app.get("/blog/get-blog/{title}")
 async def get_blog(title : str):
     logger.info("get_blog api called")
     try:
@@ -74,7 +74,7 @@ async def get_blog(title : str):
         return handle_exception(e)
 
 
-@app.post("/blog/create_blog/")
+@app.post("/blog/create-blog/")
 async def create_blog(blog: BlogSchema):
     logger.info("create_blog api called")
     try:
@@ -111,7 +111,7 @@ async def create_blog(blog: BlogSchema):
         return handle_exception(e)
 
 
-@app.put("/blog/update_blog")
+@app.put("/blog/update-blog")
 async def update_blog(new_data: BlogUpdateSchema):
     try:
         async with CosmoDB(config) as cosmo_db:
@@ -143,7 +143,7 @@ async def update_blog(new_data: BlogUpdateSchema):
         return handle_exception(e)
 
 
-@app.delete("/blog/delete_blog")
+@app.delete("/blog/delete-blog")
 async def delete_blog(blog_title: str):
     logger.info("delete_blog api called")
     try:
