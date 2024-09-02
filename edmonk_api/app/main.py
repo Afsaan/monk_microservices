@@ -71,8 +71,11 @@ async def update_webinar(webinar_title: str, new_data: WebinarSchema):
     try:
         async with CosmoDB(config) as cosmo_db:
             webinar_container = await cosmo_db.get_or_create_container(DATABASE_NAME, CONTAINER_NAME, "/Tag")
-            all_webinars = [webinar async for webinar in webinar_container.read_all_items()]
-            existing_item = next(webinar for webinar in all_webinars if webinar["title"] == webinar_title)
+            queried_webinars = webinar_container.query_items(
+                query="SELECT * FROM c WHERE c.title = @webinar_title",
+                parameters=[{"name": "@webinar_title", "value": webinar_title}]
+            )
+            existing_item = [item async for item in queried_webinars][0]
             update_items_encoded = jsonable_encoder(new_data)
             update_items_encoded["id"] = existing_item["id"]
             update_items_encoded["last_modified"] = datetime.datetime.now().isoformat()
@@ -95,11 +98,12 @@ async def delete_webinar(webinar_title: str):
     try:
         async with CosmoDB(config) as cosmo_db:
             webinar_container = await cosmo_db.get_or_create_container(DATABASE_NAME, CONTAINER_NAME, "/Tag")
-            all_webinars = [webinar async for webinar in webinar_container.read_all_items()]
-            filtered_webinar = next(webinar for webinar in all_webinars if webinar["title"] == webinar_title)
-            deleted_item = {key: value for key, value in filtered_webinar.items()}
-            deleted_item["is_deleted"] = True
-            deleted_webinar = await webinar_container.replace_item(filtered_webinar, deleted_item)
+            queried_webinars = webinar_container.query_items(
+                query="SELECT * FROM c WHERE c.title = @webinar_title",
+                parameters=[{"name": "@webinar_title", "value": webinar_title}]
+            )
+            queried_webinar = [item async for item in queried_webinars][0]
+            await webinar_container.delete_item(queried_webinar, partition_key=queried_webinar["Tag"])
             logger.info(f"deleted item: {webinar_title}")
 
             response = {
@@ -108,7 +112,7 @@ async def delete_webinar(webinar_title: str):
                 "message": f"Successfully deleted item: {webinar_title}",
             }
 
-            return {"response": response, "deleted_webinar": deleted_webinar}
+            return {"response": response, "deleted_webinar": queried_webinar}
 
     except Exception as e:
         return handle_exception(e)
