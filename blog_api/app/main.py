@@ -39,7 +39,7 @@ async def get_all_blogs():
                 "status_code": status.HTTP_200_OK,
                 "message": "Success",
             }
-            return {"response": response, "data": all_blogs}
+            return {"response": response, "all_blogs": all_blogs}
     
     except Exception as e:
         return handle_exception(e)
@@ -53,7 +53,7 @@ async def get_blog(title : str):
             blog_container = await cosmo_db.get_or_create_container(DATABASE_NAME, CONTAINER_NAME, "/Tag")
             all_blogs = [blog async for blog in blog_container.read_all_items() if blog["is_deleted"] == False]
             if title:
-                filtered_blogs = [blog for blog in all_blogs if blog["title"] == title]
+                filtered_blogs = [blog for blog in all_blogs if blog["blog_title"] == title]
                 if filtered_blogs:
                     logger.info(f"Retrieved item: {filtered_blogs}")
                     return {"response": status.HTTP_200_OK ,"filtered_blogs": filtered_blogs}
@@ -61,12 +61,12 @@ async def get_blog(title : str):
                 else:
                     raise HTTPException(status_code=404, detail="Blog not found")
             else:
-                # If no title provided, return all data
+                # If no title provided, return all blogs
                 response = {
                     "status_msg": True,
                     "status_code": status.HTTP_200_OK,
                     "message": "Success",
-                    "data": all_blogs
+                    "all_blogs": all_blogs
                 }
                 return response
     
@@ -84,13 +84,16 @@ async def create_blog(blog: BlogSchema):
         async with CosmoDB(config) as cosmo_db:
             blog_container = await cosmo_db.get_or_create_container(DATABASE_NAME, CONTAINER_NAME, "/Tag")
             
-            all_blogs = [blog async for blog in blog_container.read_all_items()]
+            # query to check for duplicate title
+            queried_blogs = blog_container.query_items(
+                query="SELECT * FROM c WHERE c.blog_title = @title",
+                parameters=[{"name": "@title", "value": blog.blog_title}]
+            )
+            queried_blog = [item async for item in queried_blogs] if queried_blogs else None
             
-            # Iterate through each item to check for duplicate title
-            for item in all_blogs:
-                if item["title"] == blog.title:
-                    print("Duplicate title detected:", blog.title)
-                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Blog with this title already exists")
+            if queried_blog:
+                print("Duplicate title detected:", blog.blog_title)
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Blog with this title already exists")
 
             blogdata_insert = await blog_container.create_item(blog_data_items)
 
@@ -117,8 +120,8 @@ async def update_blog(new_data: BlogUpdateSchema):
         async with CosmoDB(config) as cosmo_db:
             blog_container = await cosmo_db.get_or_create_container(DATABASE_NAME, CONTAINER_NAME, "/Tag")
             queried_blogs = blog_container.query_items(
-                query="SELECT * FROM c WHERE c.title = @blog_title",
-                parameters=[{"name": "@blog_title", "value": new_data.old_blog_title}]
+                query="SELECT * FROM c WHERE c.blog_title = @old_blog_title",
+                parameters=[{"name": "@old_blog_title", "value": new_data.old_blog_title}]
             )
             queried_blog = [item async for item in queried_blogs][0]
             del new_data.old_blog_title
@@ -150,8 +153,8 @@ async def delete_blog(blog_title: str):
         async with CosmoDB(config) as cosmo_db:
             blog_container = await cosmo_db.get_or_create_container(DATABASE_NAME, CONTAINER_NAME, "/Tag")
             queried_blogs = blog_container.query_items(
-                query="SELECT * FROM c WHERE c.title = @blog_title",
-                parameters=[{"name": "@blog_title", "value": blog_title}]
+                query="SELECT * FROM c WHERE c.blog_title = @title",
+                parameters=[{"name": "@title", "value": blog_title}]
             )
             queried_blog = [item async for item in queried_blogs][0]
             deleted_item = {key: value for key, value in queried_blog.items()}
