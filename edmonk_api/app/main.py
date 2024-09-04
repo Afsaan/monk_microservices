@@ -24,7 +24,7 @@ CONTAINER_NAME = 'webinar'
 
 app=FastAPI(debug=True,
             title="Webinar API")
-logger.info("App started")
+logger.info("Webinar API App started")
 
 @app.get("/webinar/get-all-webinars/")
 async def get_all_webinars():
