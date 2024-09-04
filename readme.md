@@ -22,6 +22,13 @@
 
 ## API Endpoints
 
+### admin_api
+
+- `/admin/add-user/`: Endpoint for Admin account creation.
+- `/admin/login/`: Endpoint for Admin login.
+- `/admin/reset-password/`: Endpoint for Admin account password reset.
+
+
 ### blog_api
 
 - `/blog/get-all-blogs/`: Endpoint for getting all the blogs from the database.
