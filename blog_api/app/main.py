@@ -23,7 +23,7 @@ CONTAINER_NAME = 'blog'
 
 app=FastAPI(debug=True,
             title="Blog API")
-logger.info("App started")
+logger.info("Blog API App started")
 
 
 @app.get("/blog/get-all-blogs/")
