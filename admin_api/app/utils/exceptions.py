@@ -1,8 +1,8 @@
 # exceptions.py
 
 import logging
-from fastapi import status, HTTPException
-from azure.cosmos import exceptions as cosmosExceptions
+from fastapi import status
+from azure.cosmos import exceptions
 
 def handle_file_not_found_error(e):
     logging.exception(f"FileNotFoundError: {e}")
@@ -31,15 +31,6 @@ def handle_cosmos_not_found_exception(e):
     }
     return response
 
-def handle_http_exception(e):
-    logging.exception(f"Error: {e.detail}")
-    response = {
-        "status_msg": False,
-        "status_code": e.status_code,  
-        "message": str(e.detail),
-    }
-    return response
-
 def handle_generic_exception(e):
     logging.exception(f"Error: {e}")
     response = {
@@ -56,14 +47,8 @@ def handle_exception(e):
     elif isinstance(e, KeyError):
         return handle_key_error(e)
     
-    elif isinstance(e, cosmosExceptions.CosmosResourceNotFoundError):
+    elif isinstance(e, exceptions.CosmosResourceNotFoundError):
         return handle_cosmos_not_found_exception(e)
-    
-    elif isinstance(e, cosmosExceptions.CosmosHttpResponseError):
-        return handle_cosmos_not_found_exception(e)
-    
-    elif isinstance(e, HTTPException):
-        return handle_http_exception(e)
 
     else:
         return handle_generic_exception(e)

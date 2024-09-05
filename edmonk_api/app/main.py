@@ -24,9 +24,9 @@ CONTAINER_NAME = 'webinar'
 
 app=FastAPI(debug=True,
             title="Webinar API")
-logger.info("App started")
+logger.info("Webinar API App started")
 
-@app.get("/webinar/get_all_webinars/")
+@app.get("/webinar/get-all-webinars/")
 async def get_all_webinars():
     logger.info("get_webinar api called")
     try:
@@ -43,7 +43,7 @@ async def get_all_webinars():
     except Exception as e:
         return handle_exception(e)
 
-@app.post("/webinar/create_webinar/")
+@app.post("/webinar/create-webinar/")
 async def create_webinar(webinar: WebinarSchema):
     logger.info("create_webinar api called")
     try:
@@ -65,14 +65,17 @@ async def create_webinar(webinar: WebinarSchema):
         return handle_exception(e)
 
 
-@app.put("/webinar/update_webinar/{webinar_title}")
-async def update_webinar(webinar_title: str, new_data: WebinarSchema):
+@app.put("/webinar/update-webinar/{webinarTitle}")
+async def update_webinar(webinarTitle: str, new_data: WebinarSchema):
     logger.info("update_webinar api called")
     try:
         async with CosmoDB(config) as cosmo_db:
             webinar_container = await cosmo_db.get_or_create_container(DATABASE_NAME, CONTAINER_NAME, "/Tag")
-            all_webinars = [webinar async for webinar in webinar_container.read_all_items()]
-            existing_item = next(webinar for webinar in all_webinars if webinar["title"] == webinar_title)
+            queried_webinars = webinar_container.query_items(
+                query="SELECT * FROM c WHERE c.title = @webinarTitle",
+                parameters=[{"name": "@webinarTitle", "value": webinarTitle}]
+            )
+            existing_item = [item async for item in queried_webinars][0]
             update_items_encoded = jsonable_encoder(new_data)
             update_items_encoded["id"] = existing_item["id"]
             update_items_encoded["last_modified"] = datetime.datetime.now().isoformat()
@@ -89,26 +92,27 @@ async def update_webinar(webinar_title: str, new_data: WebinarSchema):
     except Exception as e:
         return handle_exception(e)
 
-@app.delete("/webinar/delete_webinar/{webinar_title}")
-async def delete_webinar(webinar_title: str):
+@app.delete("/webinar/delete_webinar/{webinarTitle}")
+async def delete_webinar(webinarTitle: str):
     logger.info("delete_webinar api called")
     try:
         async with CosmoDB(config) as cosmo_db:
             webinar_container = await cosmo_db.get_or_create_container(DATABASE_NAME, CONTAINER_NAME, "/Tag")
-            all_webinars = [webinar async for webinar in webinar_container.read_all_items()]
-            filtered_webinar = next(webinar for webinar in all_webinars if webinar["title"] == webinar_title)
-            deleted_item = {key: value for key, value in filtered_webinar.items()}
-            deleted_item["is_deleted"] = True
-            deleted_webinar = await webinar_container.replace_item(filtered_webinar, deleted_item)
-            logger.info(f"deleted item: {webinar_title}")
+            queried_webinars = webinar_container.query_items(
+                query="SELECT * FROM c WHERE c.title = @webinarTitle",
+                parameters=[{"name": "@webinarTitle", "value": webinarTitle}]
+            )
+            queried_webinar = [item async for item in queried_webinars][0]
+            await webinar_container.delete_item(queried_webinar, partition_key=queried_webinar["Tag"])
+            logger.info(f"deleted item: {webinarTitle}")
 
             response = {
                 "status_msg": True,
                 "status_code": status.HTTP_200_OK,
-                "message": f"Successfully deleted item: {webinar_title}",
+                "message": f"Successfully deleted item: {webinarTitle}",
             }
 
-            return {"response": response, "deleted_webinar": deleted_webinar}
+            return {"response": response, "deleted_webinar": queried_webinar}
 
     except Exception as e:
         return handle_exception(e)

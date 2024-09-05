@@ -1,12 +1,22 @@
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, time
+
+class eventSummaryList(BaseModel):
+    listTitle: str
+
+class speakers(BaseModel):
+    name: str
+    post: str
 
 class WebinarSchema(BaseModel):
-    image: str
-    title: str
-    description: str
-    date: date
-    start_time: str
-    end_time: str
-    tag: str
+    eventImg: str
+    eventTitle: str
+    eventSummary: str
+    eventSummaryList: list[eventSummaryList]
+    speakers: list[speakers]
+    eventMonth: date
+    eventDate: date
+    start_time: time
+    end_time: time
+    Tag: str
     active: bool

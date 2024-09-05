@@ -23,10 +23,10 @@ CONTAINER_NAME = 'blog'
 
 app=FastAPI(debug=True,
             title="Blog API")
-logger.info("App started")
+logger.info("Blog API App started")
 
 
-@app.get("/blog/get_all_blogs/")
+@app.get("/blog/get-all-blogs/")
 async def get_all_blogs():
     logger.info("get_all_blogs api called")
     try:
@@ -39,13 +39,13 @@ async def get_all_blogs():
                 "status_code": status.HTTP_200_OK,
                 "message": "Success",
             }
-            return {"response": response, "data": all_blogs}
+            return {"response": response, "all_blogs": all_blogs}
     
     except Exception as e:
         return handle_exception(e)
 
 
-@app.get("/blog/get_blog/{title}")
+@app.get("/blog/get-blog/{title}")
 async def get_blog(title : str):
     logger.info("get_blog api called")
     try:
@@ -53,7 +53,7 @@ async def get_blog(title : str):
             blog_container = await cosmo_db.get_or_create_container(DATABASE_NAME, CONTAINER_NAME, "/Tag")
             all_blogs = [blog async for blog in blog_container.read_all_items() if blog["is_deleted"] == False]
             if title:
-                filtered_blogs = [blog for blog in all_blogs if blog["title"] == title]
+                filtered_blogs = [blog for blog in all_blogs if blog["blog_title"] == title]
                 if filtered_blogs:
                     logger.info(f"Retrieved item: {filtered_blogs}")
                     return {"response": status.HTTP_200_OK ,"filtered_blogs": filtered_blogs}
@@ -61,12 +61,12 @@ async def get_blog(title : str):
                 else:
                     raise HTTPException(status_code=404, detail="Blog not found")
             else:
-                # If no title provided, return all data
+                # If no title provided, return all blogs
                 response = {
                     "status_msg": True,
                     "status_code": status.HTTP_200_OK,
                     "message": "Success",
-                    "data": all_blogs
+                    "all_blogs": all_blogs
                 }
                 return response
     
@@ -74,7 +74,7 @@ async def get_blog(title : str):
         return handle_exception(e)
 
 
-@app.post("/blog/create_blog/")
+@app.post("/blog/create-blog/")
 async def create_blog(blog: BlogSchema):
     logger.info("create_blog api called")
     try:
@@ -84,13 +84,16 @@ async def create_blog(blog: BlogSchema):
         async with CosmoDB(config) as cosmo_db:
             blog_container = await cosmo_db.get_or_create_container(DATABASE_NAME, CONTAINER_NAME, "/Tag")
             
-            all_blogs = [blog async for blog in blog_container.read_all_items()]
+            # query to check for duplicate title
+            queried_blogs = blog_container.query_items(
+                query="SELECT * FROM c WHERE c.blog_title = @title",
+                parameters=[{"name": "@title", "value": blog.blog_title}]
+            )
+            queried_blog = [item async for item in queried_blogs] if queried_blogs else None
             
-            # Iterate through each item to check for duplicate title
-            for item in all_blogs:
-                if item["title"] == blog.title:
-                    print("Duplicate title detected:", blog.title)
-                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Blog with this title already exists")
+            if queried_blog:
+                print("Duplicate title detected:", blog.blog_title)
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Blog with this title already exists")
 
             blogdata_insert = await blog_container.create_item(blog_data_items)
 
@@ -111,21 +114,24 @@ async def create_blog(blog: BlogSchema):
         return handle_exception(e)
 
 
-@app.put("/blog/update_blog")
+@app.put("/blog/update-blog")
 async def update_blog(new_data: BlogUpdateSchema):
     try:
         async with CosmoDB(config) as cosmo_db:
             blog_container = await cosmo_db.get_or_create_container(DATABASE_NAME, CONTAINER_NAME, "/Tag")
-            all_blogs = [blog async for blog in blog_container.read_all_items()]
-            existing_item = next(blog for blog in all_blogs if blog["title"] == new_data.old_blog_title)
+            queried_blogs = blog_container.query_items(
+                query="SELECT * FROM c WHERE c.blog_title = @old_blog_title",
+                parameters=[{"name": "@old_blog_title", "value": new_data.old_blog_title}]
+            )
+            queried_blog = [item async for item in queried_blogs][0]
             del new_data.old_blog_title
             update_items_encoded = jsonable_encoder(new_data)
-            update_items_encoded["id"] = existing_item["id"]
+            update_items_encoded["id"] = queried_blog["id"]
             update_items_encoded["last_modified"] = datetime.datetime.now().isoformat()
             update_items_encoded["is_deleted"] = False
             # update_items_encoded["Title"] = new_data.Title.lower()
             
-            updated_item = await blog_container.replace_item(existing_item, update_items_encoded)
+            updated_item = await blog_container.replace_item(queried_blog, update_items_encoded)
             
             response = {
                 "status_msg": True,
@@ -140,17 +146,20 @@ async def update_blog(new_data: BlogUpdateSchema):
         return handle_exception(e)
 
 
-@app.delete("/blog/delete_blog")
+@app.delete("/blog/delete-blog")
 async def delete_blog(blog_title: str):
     logger.info("delete_blog api called")
     try:
         async with CosmoDB(config) as cosmo_db:
             blog_container = await cosmo_db.get_or_create_container(DATABASE_NAME, CONTAINER_NAME, "/Tag")
-            all_blogs = [blog async for blog in blog_container.read_all_items()]
-            filtered_blogs = next(blog for blog in all_blogs if blog["title"] == blog_title)
-            deleted_item = {key: value for key, value in filtered_blogs.items()}
+            queried_blogs = blog_container.query_items(
+                query="SELECT * FROM c WHERE c.blog_title = @title",
+                parameters=[{"name": "@title", "value": blog_title}]
+            )
+            queried_blog = [item async for item in queried_blogs][0]
+            deleted_item = {key: value for key, value in queried_blog.items()}
             deleted_item["is_deleted"] = True
-            deleted_blog = await blog_container.replace_item(filtered_blogs, deleted_item)
+            deleted_blog = await blog_container.replace_item(queried_blog, deleted_item)
             logger.info(f"deleted item: {blog_title}")
 
             # Create success response
